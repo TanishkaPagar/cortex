@@ -1,15 +1,12 @@
-from google import genai
-from google.genai import types
+from groq import Groq
 import os
 from dotenv import load_dotenv
 from pathlib import Path
 
-# Load .env file
 env_path = Path(__file__).parent.parent.parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
-# Configure Gemini client
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 
 async def summarize_text(text: str) -> str:
@@ -18,7 +15,12 @@ async def summarize_text(text: str) -> str:
         if len(words) > 4000:
             text = ' '.join(words[:4000])
 
-        prompt = f"""You are an expert study assistant.
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {
+                    "role": "system",
+                    "content": """You are an expert study assistant.
 Summarize the given text in a clear, structured way.
 Use this format:
 
@@ -35,17 +37,17 @@ Use this format:
 ⚡ IMPORTANT POINTS:
 - [point 1]
 - [point 2]
-- [point 3]
-
-Here are the study notes to summarize:
-
-{text}"""
-
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt
+- [point 3]"""
+                },
+                {
+                    "role": "user",
+                    "content": f"Please summarize these study notes:\n\n{text}"
+                }
+            ],
+            max_tokens=1000,
+            temperature=0.3
         )
-        return response.text
+        return response.choices[0].message.content
 
     except Exception as e:
         return f"Summary could not be generated: {str(e)}"
@@ -57,13 +59,22 @@ async def generate_key_topics(text: str) -> list[str]:
         if len(words) > 2000:
             text = ' '.join(words[:2000])
 
-        prompt = f"Extract the main topics from this text. Return ONLY a comma-separated list of topics, nothing else:\n\n{text}"
-
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "Extract the main topics from this text. Return ONLY a comma-separated list of topics, nothing else."
+                },
+                {
+                    "role": "user",
+                    "content": text
+                }
+            ],
+            max_tokens=200,
+            temperature=0.3
         )
-        topics_str = response.text
+        topics_str = response.choices[0].message.content
         topics = [t.strip() for t in topics_str.split(',')]
         return topics[:10]
 
