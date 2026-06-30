@@ -1,0 +1,9 @@
+**/venv/
+**/.venv/
+**/node_modules/
+**/.next/
+**/__pycache__/
+**/.env
+**/uploads/
+**/*.pyc
+employee_burnout_predictor/
